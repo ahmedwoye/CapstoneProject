@@ -1,0 +1,32 @@
+name: Ansible Deploy
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+
+jobs:
+  run-ansible:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+
+      - name: Create SSH key
+        run: |
+          mkdir -p /tmp/
+          echo "${{ secrets.EC2_PRIVATE_KEY }}" > /tmp/key.pem
+          chmod 400 /tmp/key.pem
+          ls -l /tmp/key.pem
+
+      - name: Run Playbook
+        run: |
+          export ANSIBLE_HOST_KEY_CHECKING=False
+          ansible-playbook -i inventories/dev.ini playbook.yml \
+            --private-key /tmp/key.pem -u ec2-user

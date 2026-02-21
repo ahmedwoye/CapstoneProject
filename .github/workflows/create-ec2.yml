@@ -1,0 +1,57 @@
+name: Terraform EC2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs: 
+  terraform:
+    name: 'Terraform Deployment'
+    runs-on: ubuntu-latest
+    env:
+      TF_IN_AUTOMATION: true
+      TF_INPUT: false
+
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v4
+
+      - name: Setup Artifact
+        run: ls -lstra
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform Init (S3 Backend)
+        working-directory: Terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=teachbleat-cicd-state-bucket" \
+            -backend-config="key=envs/dev/terraform.tfstate" \
+            -backend-config="region=eu-west-1" \
+            -backend-config="encrypt=true"
+            # -backend-config="dynamodb_table=terraform-locks"  # optional
+
+      - name: Terraform Validate
+        working-directory: Terraform
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: Terraform
+        run: terraform plan
+
+      - name: Terraform Apply
+        working-directory: Terraform
+        run: terraform apply -auto-approve
+         
